@@ -36,12 +36,19 @@ BCGX_Project/
 
 ## Setup
 
+A virtual environment (`.venv/`, gitignored) keeps dependencies isolated from the
+system Python install:
+
 ```bash
+python -m venv .venv
+.venv\Scripts\activate        # Windows (use `source .venv/bin/activate` on macOS/Linux)
 pip install -r requirements.txt
+python -m ipykernel install --user --name=bcgx_project --display-name "Python (BCGX_Project)"
 ```
 
-Run the notebooks in order (01 → 04); each one reads its input relative to the
-`notebooks/` folder (e.g. `../data/raw/client_data.csv`) and writes its output into
+Open the notebooks in Jupyter and select the **"Python (BCGX_Project)"** kernel, then
+run them in order (01 → 04); each one reads its input relative to the `notebooks/`
+folder (e.g. `../data/raw/client_data.csv`) and writes its output into
 `../data/processed/`.
 
 ## Pipeline
