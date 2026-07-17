@@ -14,7 +14,7 @@ BCGX_Project/
 │   │   ├── client_data.csv        # Customer profile, consumption, contract dates, churn label
 │   │   └── price_data.csv         # Monthly tariff prices per customer (off-peak/peak/mid-peak)
 │   └── processed/                 # Outputs of the notebooks, in pipeline order
-│       ├── clean_data_after_eda.csv     # Cleaned client data (output of notebook 01)
+│       ├── clean_data_after_eda.csv     # Client data + per-client price-variance features (output of notebook 01)
 │       └── data_for_predictions.csv     # Fully engineered, model-ready dataset (output of notebook 02)
 ├── notebooks/
 │   ├── 01_eda_visualisation.ipynb       # Data profiling, distributions, churn-split analysis
@@ -56,9 +56,11 @@ folder (e.g. `../data/raw/client_data.csv`) and writes its output into
 1. **Business understanding** (`docs/briefs/task1_brief.pdf`, answered in
    `docs/deliverables/task1_email_response.docx`) — scoped the data and approach needed
    to test whether price sensitivity drives churn.
-2. **EDA** (`notebooks/01_eda_visualisation.ipynb`) — profiles both raw datasets and
+2. **EDA** (`notebooks/01_eda_visualisation.ipynb`) — profiles both raw datasets,
    compares churned vs. retained customers across consumption, margin, tenure, and
-   sales channel.
+   sales channel, and derives per-client price-variance features from
+   `price_data.csv` (variance of each price component across the full year and
+   across Jul-Dec), saved as `clean_data_after_eda.csv`.
 3. **Feature engineering** (`notebooks/02_feature_engineering.ipynb`) — builds
    price-sensitivity features (Dec–Jan off-peak price deltas, cross-period price
    swings), tenure/contract-timing features, encodes categoricals, and corrects skew.
@@ -74,6 +76,20 @@ high-value customers with a high predicted churn probability, rather than offeri
 broadly.
 
 **Caveat:** the delivered Random Forest has ~90% accuracy but only ~5% recall on
-actual churners, a symptom of the ~90/10 class imbalance rather than a well-tuned
-model — see notebook 04 for the (currently unexecuted) hyperparameter search intended
-to address this before the recommendation above is actioned on live customers.
+actual churners (20 of 366 churners caught in the test set), a symptom of the
+~90/10 class imbalance rather than a well-tuned model. Notebook 04 runs a
+`GridSearchCV` over `n_estimators`/`max_depth`/`min_samples_split`/`min_samples_leaf`
+to check this: it converges on essentially the same hyperparameters as the untuned
+baseline and produces an **identical** confusion matrix, confirming the low recall
+isn't a tuning problem — an accuracy-scored search has no incentive to catch the
+minority class.
+
+Refitting with `class_weight='balanced'` (still `scoring='accuracy'`, no
+resampling) roughly triples recall — 53 of 366 churners caught (14%) instead of 20
+(5%) — but at a real precision cost: false positives on the churn class rise from 3
+to 76, precision on that class drops from ~87% to 41%, and overall accuracy dips
+from 90% to 89%. That's a meaningfully better trade for a retention-targeting use
+case (missing a churner is more costly than an extra discount offer) but recall is
+still well under half, so `scoring='recall'`/`'f1'` in the grid search or
+resampling (SMOTE/undersampling) are the next things to try before this model is
+trusted to flag at-risk customers on its own.
